@@ -152,7 +152,7 @@ class QueueClient:
             logger.warning(f"Ban detected: {log_msg}. Rate limit exceeded, but limit_remaining > 0")
             await self._close_ctx(utc.ts() + 60 * 15)
             # await self._close_ctx(-1, inactive=True, msg=err_msg)
-            # raise HandledError()
+            raise HandledError()
 
         if err_msg.startswith("(326) Authorization: Denied by access control"):
             logger.warning(f"Ban detected: {log_msg}")
