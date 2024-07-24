@@ -72,6 +72,7 @@ class QueueClient:
         self.debug = debug
         self.ctx: Ctx | None = None
         self.proxy = proxy
+        self.__rl_count = 0
 
     async def __aenter__(self):
         await self._get_ctx()
@@ -150,7 +151,12 @@ class QueueClient:
         # no way to check is account banned in direct way, but this check should work
         if err_msg.startswith("(88) Rate limit exceeded") and limit_remaining > 0:
             logger.warning(f"Ban detected: {log_msg}. Rate limit exceeded, but limit_remaining > 0")
-            await self._close_ctx(utc.ts() + 60 * 15)
+            if self.__rl_count == 0:
+                self.__rl_count += 1
+                await self._close_ctx(utc.ts() + 1)
+            else:
+                self.__rl_count += 1
+                await self._close_ctx(utc.ts() + 60 * 15)  # 15 minutes
             # await self._close_ctx(-1, inactive=True, msg=err_msg)
             raise HandledError()
 
