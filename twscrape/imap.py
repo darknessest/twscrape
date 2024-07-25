@@ -105,7 +105,7 @@ async def imap_login(email: str, password: str):
         imap.login(email, password)
         imap.select("INBOX", readonly=True)
     except imaplib.IMAP4.error as e:
-        logger.error(f"Error logging into {email} on {domain}: {e}")
+        logger.exception(f"Error logging into {email} on {domain}: {e}")
         raise EmailLoginError() from e
 
     return imap
