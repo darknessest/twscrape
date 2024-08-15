@@ -92,6 +92,7 @@ async def migrate(db: aiosqlite.Connection):
         2: v2,
         3: v3,
         4: v4,
+        5: v5,
     }
 
     # logger.debug(f"Current migration v{uv} (latest v{len(migrations)})")
