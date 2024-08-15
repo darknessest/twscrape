@@ -15,7 +15,7 @@ from .logger import logger
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 
 @dataclass(kw_only=True)
-class GmailCredentials:
+class GmailCredentials(JSONTrait):
     token: str
     refresh_token: str
     client_id: str
