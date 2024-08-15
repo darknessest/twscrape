@@ -7,7 +7,7 @@ import pyotp
 from httpx import AsyncClient, Response
 
 from .account import Account
-from .gmail import read_email_code
+from .gmail import gmail_get_email_code
 from .imap import imap_get_email_code, imap_login
 from .logger import logger
 from .utils import utc
@@ -179,8 +179,9 @@ async def login_confirm_email_code(ctx: TaskCtx):
         print(f"Enter email code for {ctx.acc.username} / {ctx.acc.email}")
         value = input("Code: ")
         value = value.strip()
-    elif ctx.cfg.gmail:
-        value = read_email_code()
+    elif ctx.cfg.gmail and ctx.acc.gmail_credentials:
+        logger.trace(f"Getting email code for {ctx.acc.username} through Gmail")
+        value = gmail_get_email_code(ctx.acc.gmail_credentials)
     else:
         if not ctx.imap:
             ctx.imap = await imap_login(ctx.acc.email, ctx.acc.email_password)

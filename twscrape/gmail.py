@@ -9,10 +9,23 @@ from googleapiclient.errors import HttpError
 
 from .imap import EmailLoginError
 from .logger import logger
+from .models import JSONTrait
 
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 
-def oauth2_login(authorized_info: dict[str, str]) -> Credentials:
+class GmailCredentials(JSONTrait):
+    token: str
+    refresh_token: str
+    client_id: str
+    client_secret: str
+    scopes: list[str] = SCOPES
+    token_uri: str = "https://oauth2.googleapis.com/token"
+    universe_domain: str = "googleapis.com"
+    account: str = ""
+    expiry: str = ""
+
+
+def oauth2_login(authorized_info: GmailCredentials) -> Credentials:
     creds = None
     # The file token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
@@ -109,9 +122,17 @@ def get_service(credentials: Credentials):
         logger.exception("An error occurred while trying to build the service")
     finally:
         return service
+
     
-def read_email_code(credentials: Credentials) -> str | None:
+def gmail_get_email_code(authorized_info: GmailCredentials) -> str:
     service  =  None
+
+    if credentials := oauth2_login(authorized_info):
+        pass
+    else:
+        logger.error("Credentials couldn't be authorized")
+        raise EmailLoginError("Credentials couldn't be authorized")
+
     if service := get_service(credentials):
         return get_emails(service)
     else:

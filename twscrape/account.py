@@ -6,6 +6,7 @@ from datetime import datetime
 
 from httpx import AsyncClient, AsyncHTTPTransport
 
+from .gmail import GmailCredentials
 from .models import JSONTrait
 from .utils import utc
 
@@ -24,6 +25,7 @@ class Account(JSONTrait):
     stats: dict[str, int] = field(default_factory=dict)  # queue: requests
     headers: dict[str, str] = field(default_factory=dict)
     cookies: dict[str, str] = field(default_factory=dict)
+    gmail_credentials: GmailCredentials | None = None
     mfa_code: str | None = None
     proxy: str | None = None
     error_msg: str | None = None
