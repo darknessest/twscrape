@@ -1,5 +1,6 @@
 import base64
 import email as emaillib
+from email.message import Message as EmailMessage
 from datetime import datetime
 
 from google.auth.transport.requests import Request
@@ -47,7 +48,7 @@ def oauth2_login(authorized_info: GmailCredentials) -> Credentials:
         #     token.write(creds.to_json())
     return creds
 
-def _parse_code(email_message: emaillib.Message) -> str | None:
+def _parse_code(email_message: EmailMessage) -> str | None:
     # NOTE: consider reading just the snippet of the email
     msg_time = email_message.get("Date", "").split("(")[0].strip()
     msg_time = datetime.strptime(msg_time, "%a, %d %b %Y %H:%M:%S %z")
@@ -75,8 +76,9 @@ def _parse_code(email_message: emaillib.Message) -> str | None:
     if "info@x.com" in msg_from and "confirmation code is" in msg_subj:
         # eg. Your Twitter confirmation code is XXX
         return msg_subj.split(" ")[-1].strip()
+    return None
 
-def _read_message(service, msg_id: str) -> emaillib.Message:
+def _read_message(service, msg_id: str) -> EmailMessage:
     message_list = (
         service.users()
         .messages()
