@@ -1,6 +1,6 @@
 import base64
 import email as emaillib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from email.message import Message as EmailMessage
 
@@ -11,7 +11,6 @@ from googleapiclient.errors import HttpError
 
 from .imap import EmailLoginError
 from .logger import logger
-from .models import JSONTrait
 
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 
@@ -21,7 +20,7 @@ class GmailCredentials:
     refresh_token: str
     client_id: str
     client_secret: str
-    scopes: list[str] = SCOPES
+    scopes: list[str] = field(default_factory=lambda: SCOPES) # NOTE: this actually should be a copied list
     token_uri: str = "https://oauth2.googleapis.com/token"
     universe_domain: str = "googleapis.com"
     account: str = ""
