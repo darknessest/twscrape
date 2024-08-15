@@ -1,7 +1,8 @@
 import base64
 import email as emaillib
-from email.message import Message as EmailMessage
+from dataclasses import dataclass
 from datetime import datetime
+from email.message import Message as EmailMessage
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -14,7 +15,8 @@ from .models import JSONTrait
 
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 
-class GmailCredentials(JSONTrait):
+@dataclass(kw_only=True)
+class GmailCredentials:
     token: str
     refresh_token: str
     client_id: str
