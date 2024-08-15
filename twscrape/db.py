@@ -83,6 +83,9 @@ async def migrate(db: aiosqlite.Connection):
 
     async def v4():
         await db.execute("ALTER TABLE accounts ADD COLUMN mfa_code TEXT DEFAULT NULL")
+    
+    async def v5():
+        await db.execute("ALTER TABLE accounts ADD COLUMN gmail_credentials TEXT DEFAULT NULL")
 
     migrations = {
         1: v1,

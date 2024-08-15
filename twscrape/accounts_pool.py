@@ -202,6 +202,7 @@ class AccountsPool:
             error_msg = NULL,
             headers = json_object(),
             cookies = json_object(),
+            gmail_credentials = json_object(),
             user_agent = "{UserAgent().safari}"
         WHERE username IN ({','.join([f'"{x}"' for x in usernames])})
         """
