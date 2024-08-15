@@ -11,6 +11,7 @@ from googleapiclient.errors import HttpError
 
 from .imap import EmailLoginError
 from .logger import logger
+from .models import JSONTrait
 
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 
