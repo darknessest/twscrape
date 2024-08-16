@@ -7,7 +7,7 @@ import pyotp
 from httpx import AsyncClient, Response
 
 from .account import Account
-from .gmail import gmail_get_email_code
+from .gmail import GmailCredentials, gmail_get_email_code
 from .imap import imap_get_email_code, imap_login
 from .logger import logger
 from .utils import utc
@@ -29,6 +29,7 @@ class TaskCtx:
     cfg: LoginConfig
     prev: Any
     imap: None | imaplib.IMAP4_SSL
+    gmail_credentials: GmailCredentials | None
 
 
 async def get_guest_token(client: AsyncClient):
@@ -259,16 +260,18 @@ async def login(acc: Account, cfg: LoginConfig | None = None) -> Account:
         logger.info(f"account already active {log_id}")
         return acc
 
-    cfg, imap = cfg or LoginConfig(), None
+    cfg, imap, gmail_creds = cfg or LoginConfig(), None, None
     if cfg.email_first and not cfg.manual:
         imap = await imap_login(acc.email, acc.email_password)
+    if cfg.gmail and acc.gmail_credentials:
+        gmail_creds = acc.gmail_credentials
 
     async with acc.make_client() as client:
         guest_token = await get_guest_token(client)
         client.headers["x-guest-token"] = guest_token
 
         rep = await login_initiate(client)
-        ctx = TaskCtx(client, acc, cfg, None, imap)
+        ctx = TaskCtx(client, acc, cfg, None, imap, gmail_creds)
         while True:
             rep = await next_login_task(ctx, rep)
             if not rep:
