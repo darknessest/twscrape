@@ -164,7 +164,7 @@ class AccountsPool:
             logger.error(f"Failed to login '{account.username}': {rep.status_code} - {rep.text}")
             return False
         except Exception as e:
-            logger.error(f"Failed to login '{account.username}': {e}")
+            logger.exception(f"Failed to login '{account.username}': {e}")
             return False
         finally:
             await self.save(account)
