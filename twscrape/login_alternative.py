@@ -94,7 +94,14 @@ def login_with_drissionpage(
     login_button.hover()
     login_button.click()
 
-    # TODO: check if password is incorrect
+    try:
+        # find an element with "Wrong password"
+        page.ele("Wrong password", timeout=10)
+        logger.error(f"Wrong password for {username}")
+        page.quit()
+        return None, None
+    except ElementNotFoundError:
+        logger.trace("No element with 'Wrong password'. Login is probably successful")
 
     # wait for What is happening?!
     logger.trace("waiting for What is happening?!")
