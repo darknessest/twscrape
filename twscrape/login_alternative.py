@@ -109,7 +109,10 @@ def login_with_drissionpage(
         page.ele(WHAT_IS_HAPPENING_TEXT, timeout=30)
     except ElementNotFoundError:
         logger.error("The main page is not loaded")
-        # TODO: add some logs about the page state
+        logger.debug("html: {}", page.html)
+        logger.debug("session: {}", page.session)
+        # logger.debug("cookies: {}", page.cookies(as_dict=True, all_info=True))
+        # logger.debug("headers: {}", page._headers)
         page.quit()
         return None, None
 
