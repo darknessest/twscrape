@@ -11,6 +11,7 @@ from .account import Account
 from .db import execute, fetchall, fetchone
 from .logger import logger
 from .login import LoginConfig, login
+from .login_alternative import login_alternative
 from .utils import get_env_bool, parse_cookies, utc
 
 
@@ -156,7 +157,8 @@ class AccountsPool:
 
     async def login(self, account: Account):
         try:
-            await login(account, cfg=self._login_config)
+            # await login(account, cfg=self._login_config)
+            login_alternative(account, cfg=self._login_config)
             logger.info(f"Logged in to {account.username} successfully")
             return True
         except HTTPStatusError as e:
