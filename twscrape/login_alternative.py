@@ -61,7 +61,7 @@ def login_with_drissionpage(
     logger.trace("Loading the login page")
     page.get(LOGIN_URL)
 
-    logger.info("waiting for the page to load")
+    logger.trace("waiting for the page to load")
     try:
         login_elem = page.ele(LOGIN_SPAN_TEXT, timeout=30)
         login_elem.click()
@@ -72,7 +72,7 @@ def login_with_drissionpage(
 
     login_elem.input(username)
 
-    logger.info("Clicking on the next button")
+    logger.trace("Clicking on the next button")
     page.ele(NEXT_BUTTON_TEXT).click()
 
     try:

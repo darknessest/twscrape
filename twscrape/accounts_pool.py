@@ -158,9 +158,13 @@ class AccountsPool:
     async def login(self, account: Account):
         try:
             # await login(account, cfg=self._login_config)
-            login_alternative(account, cfg=self._login_config)
-            logger.info(f"Logged in to {account.username} successfully")
-            return True
+            acc = login_alternative(account, cfg=self._login_config)
+            if acc.active:
+                logger.info(f"Logged in to {account.username} successfully")
+                return True
+            else:
+                logger.error(f"Failed to login to {account.username}")
+                return False
         except HTTPStatusError as e:
             rep = e.response
             logger.error(f"Failed to login '{account.username}': {rep.status_code} - {rep.text}")
