@@ -42,11 +42,13 @@ def login_with_drissionpage(
     # urls
     LOGIN_URL = "https://x.com/i/flow/login"
 
+    logger.trace("Setting up the drission page")
     # setup the page
     co = ChromiumOptions()
     co.headless(True)
     co.set_user_data_path(f"{base_data_path}/{username}")
     co._arguments.append("--disable-gpu")
+    co._arguments.append("--no-sandbox")
     co._arguments.append("--disable-dev-shm-usage")
     co._arguments.append("--window-size=1024,768")
 
@@ -56,6 +58,7 @@ def login_with_drissionpage(
     page = WebPage(chromium_options=co, session_or_options=so)
 
     # The main part
+    logger.trace("Loading the login page")
     page.get(LOGIN_URL)
 
     logger.info("waiting for the page to load")
