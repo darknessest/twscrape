@@ -18,30 +18,6 @@ class PageLoadError(Exception):
     pass
 
 
-def login_confirm_email_code(
-    *,
-    manual: bool = False,
-    gmail_credentials: GmailCredentials | None = None,
-    imap=None,
-    username: str = None,
-    email: str = None,
-) -> str:
-    if manual:
-        print(f"Enter email code for {username} / {email}")
-        value = input("Code: ")
-        value = value.strip()
-
-    elif gmail_credentials:
-        logger.trace(f"Getting email code for {ctx.acc.username} through Gmail")
-        value = gmail_get_email_code(gmail_credentials)
-    else:
-
-        now_time = utc.now() - timedelta(seconds=30)
-        value = await imap_get_email_code(ctx.imap, ctx.acc.email, now_time)
-
-    return value
-
-
 # TODO: create a exception handler to kill the page
 @tenacity.retry(stop=tenacity.stop_after_attempt(3), wait=tenacity.wait_fixed(5))
 def login_with_drissionpage(
