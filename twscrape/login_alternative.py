@@ -65,12 +65,13 @@ def login_with_drissionpage(
     try:
         login_elem = page.ele(LOGIN_SPAN_TEXT, timeout=30)
         login_elem.click()
+        logger.trace("Inserting the username")
+        login_elem.input(username)
     except ElementNotFoundError:
         page.quit()
         logger.error("Failed to load the login page")
         raise PageLoadError("Failed to load the login page")
 
-    login_elem.input(username)
 
     logger.trace("Clicking on the next button")
     page.ele(NEXT_BUTTON_TEXT).click()
@@ -105,6 +106,7 @@ def login_with_drissionpage(
         logger.trace("They are not asking for email")
 
     # wait for the Password input
+    logger.trace("waiting for the password input")
     try:
         password_elem = page.ele(PASSWORD_SELECTOR, timeout=10)
         password_elem.click()
@@ -128,11 +130,11 @@ def login_with_drissionpage(
     try:
         # find an element with "Wrong password"
         page.get_screenshot("logs/possibly_wrong_password.png")
-        page.ele("Wrong password", timeout=10)
+        page.ele("Wrong password", timeout=30)
         logger.error(f"Wrong password for {username}")
         page.quit()
         return None, None
-    except (ElementNotFoundError, WaitTimeoutError):
+    except ElementNotFoundError:
         logger.trace("No element with 'Wrong password'. Login is probably successful")
 
     # wait for What is happening?!
