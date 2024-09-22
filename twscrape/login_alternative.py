@@ -4,7 +4,7 @@ from imaplib import IMAP4_SSL
 
 import tenacity
 from DrissionPage import ChromiumOptions, SessionOptions, WebPage
-from DrissionPage.errors import ElementNotFoundError, WaitTimeoutError
+from DrissionPage.errors import ElementNotFoundError
 from fake_useragent import UserAgent
 from loguru import logger
 
@@ -129,8 +129,10 @@ def login_with_drissionpage(
 
     try:
         # find an element with "Wrong password"
-        page.get_screenshot("logs/possibly_wrong_password.png")
+        logger.trace("looking for Wrong password element")
+        page.get_screenshot("logs/possibly_wrong_password_1.png")
         page.ele("Wrong password", timeout=30)
+        page.get_screenshot("logs/possibly_wrong_password_2.png")
         logger.error(f"Wrong password for {username}")
         page.quit()
         return None, None
