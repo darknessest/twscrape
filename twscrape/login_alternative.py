@@ -94,7 +94,7 @@ def login_with_drissionpage(
 
         code_elem.input(code)
     except ElementNotFoundError:
-        logger.debug("No element with 'Confirmation code'")
+        logger.trace("No element with 'Confirmation code'")
 
     # check if they are asking for email
     try:
@@ -128,7 +128,7 @@ def login_with_drissionpage(
         return None, None
 
     # wait for What is happening?!
-    logger.trace("waiting for What is happening?!")
+    logger.trace("waiting for the navigation bar to appear")
     try:
         page.ele(NAVIGATION_BAR_SELECTOR, timeout=30)
     except ElementNotFoundError:
@@ -136,8 +136,6 @@ def login_with_drissionpage(
         logger.error("The main page is not loaded")
         logger.debug("html: {}", page.html)
         logger.debug("session: {}", page.session)
-        # logger.debug("cookies: {}", page.cookies(as_dict=True, all_info=True))
-        # logger.debug("headers: {}", page._headers)
         page.quit()
         return None, None
 
