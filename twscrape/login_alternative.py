@@ -32,7 +32,7 @@ def login_with_drissionpage(
     LOGIN_SPAN_TEXT = "Phone, email, or username"
     NEXT_BUTTON_TEXT = "Next"
     EMAIL_OR_PHONE_TEXT = "Phone or email"
-    WHAT_IS_HAPPENING_TEXT = "What is happening?!"
+    NAVIGATION_BAR_SELECTOR = "tag:nav@role=navigation"
 
     # element selectors
     PASSWORD_SELECTOR = "tag:input@type=password"
@@ -129,9 +129,8 @@ def login_with_drissionpage(
 
     try:
         # find an element with "Wrong password"
-        logger.trace("looking for Wrong password element")
-        page.get_screenshot("logs/possibly_wrong_password_1.png")
-        page.ele("Wrong password", timeout=30)
+        logger.trace("looking if password field is still there")
+        page.ele(PASSWORD_SELECTOR, timeout=10)
         page.get_screenshot("logs/possibly_wrong_password_2.png")
         logger.error(f"Wrong password for {username}")
         page.quit()
@@ -142,7 +141,7 @@ def login_with_drissionpage(
     # wait for What is happening?!
     logger.trace("waiting for What is happening?!")
     try:
-        page.ele(WHAT_IS_HAPPENING_TEXT, timeout=30)
+        page.ele(NAVIGATION_BAR_SELECTOR, timeout=30)
     except ElementNotFoundError:
         logger.error("The main page is not loaded")
         logger.debug("html: {}", page.html)
