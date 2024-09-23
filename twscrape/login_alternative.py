@@ -52,7 +52,7 @@ def login_with_drissionpage(
     co._arguments.append("--disable-dev-shm-usage")
     co._arguments.append("--window-size=1024,768")
 
-    co.set_user_agent(UserAgent().chrome)
+    # co.set_user_agent(UserAgent().chrome)
     # co.set_load_mode("eager")
     so = SessionOptions()
     page = WebPage(chromium_options=co, session_or_options=so)
