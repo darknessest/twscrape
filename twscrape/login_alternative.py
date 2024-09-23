@@ -127,22 +127,12 @@ def login_with_drissionpage(
         page.quit()
         return None, None
 
-    try:
-        # find an element with "Wrong password"
-        logger.trace("looking if password field is still there")
-        page.ele(PASSWORD_SELECTOR, timeout=10)
-        page.get_screenshot("logs/possibly_wrong_password_2.png")
-        logger.error(f"Wrong password for {username}")
-        page.quit()
-        return None, None
-    except ElementNotFoundError:
-        logger.trace("No element with 'Wrong password'. Login is probably successful")
-
     # wait for What is happening?!
     logger.trace("waiting for What is happening?!")
     try:
         page.ele(NAVIGATION_BAR_SELECTOR, timeout=30)
     except ElementNotFoundError:
+        page.get_screenshot("logs/login_error.png")
         logger.error("The main page is not loaded")
         logger.debug("html: {}", page.html)
         logger.debug("session: {}", page.session)
