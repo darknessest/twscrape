@@ -82,13 +82,19 @@ def login_with_drissionpage(
         code_elem.click()
 
         # get the code from email
-        logger.trace(f"Getting email code for {username} through Gmail")
-        if gmail_credentials:
-            code = gmail_get_email_code(gmail_credentials)
-        elif imap and email:
-            code = asyncio.run(imap_get_email_code(imap, email))
-        else:
-            logger.error("No gmail or imap provided. Can't get the code")
+        try:
+            if gmail_credentials:
+                logger.trace(f"Getting email code for {username} through Gmail")
+                code = gmail_get_email_code(gmail_credentials)
+            elif imap and email:
+                logger.trace(f"Getting email code for {username} through IMAP")
+                code = asyncio.run(imap_get_email_code(imap, email))
+            else:
+                logger.error("No gmail or imap provided. Can't get the code")
+                page.quit()
+                return None, None
+        except Exception:
+            logger.exception("Failed to get the email code")
             page.quit()
             return None, None
 
