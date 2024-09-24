@@ -30,8 +30,8 @@ class GmailCredentials(JSONTrait):
     def keys(self):
         return self.__dict__.keys()
 
-    def get(self, key: str):
-        return self.__dict__.get(key)
+    def get(self, key: str, default: object | None = None):
+        return self.__dict__.get(key, default)
 
 
 def oauth2_login(authorized_info: GmailCredentials) -> Credentials:
