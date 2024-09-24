@@ -5,7 +5,6 @@ from imaplib import IMAP4_SSL
 import tenacity
 from DrissionPage import ChromiumOptions, SessionOptions, WebPage
 from DrissionPage.errors import ElementNotFoundError
-from fake_useragent import UserAgent
 from loguru import logger
 
 from .account import Account
