@@ -27,6 +27,9 @@ class GmailCredentials(JSONTrait):
     account: str = ""
     expiry: str = ""
 
+    def keys(self):
+        return self.__dict__.keys()
+
 
 def oauth2_login(authorized_info: GmailCredentials) -> Credentials:
     creds = None
