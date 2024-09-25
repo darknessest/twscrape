@@ -17,6 +17,27 @@ class PageLoadError(Exception):
     pass
 
 
+def get_email_code(
+    username: str,
+    gmail_credentials: GmailCredentials | None = None,
+    imap: IMAP4_SSL | None = None,
+    email: str | None = None,
+) -> str | None:
+
+    if gmail_credentials:
+        logger.trace(f"Getting email code for {username} through Gmail")
+        code = gmail_get_email_code(gmail_credentials)
+        logger.trace(f"The code for {username} is {code}")
+    elif imap and email:
+        logger.trace(f"Getting email code for {username} through IMAP")
+        code = asyncio.run(imap_get_email_code(imap, email))
+        logger.trace(f"The code for {username} is {code}")
+    else:
+        return None
+
+    return code
+
+
 # TODO: create a exception handler to kill the page
 @tenacity.retry(stop=tenacity.stop_after_attempt(3), wait=tenacity.wait_fixed(5))
 def login_with_drissionpage(
@@ -30,12 +51,13 @@ def login_with_drissionpage(
     # element constants
     LOGIN_SPAN_TEXT = "Phone, email, or username"
     NEXT_BUTTON_TEXT = "Next"
-    EMAIL_OR_PHONE_TEXT = "Phone or email"
+    # EMAIL_OR_PHONE_TEXT = "Phone or email"
     NAVIGATION_BAR_SELECTOR = "tag:nav@role=navigation"
 
     # element selectors
     PASSWORD_SELECTOR = "tag:input@type=password"
-    CODEINPUT_SELECTOR = "tag:input@data-testid=ocfEnterTextTextInput"
+    CODEINPUT_SELECTOR = "tag:input@data-testid=ocfEnterTextTextInput@type=text"
+    EMAILINPUT_SELECTOR = "tag:input@data-testid=ocfEnterTextTextInput@type=email"
     LOGIN_BUTTON_SELECTOR = "tag:button@data-testid=LoginForm_Login_Button"
 
     # urls
@@ -71,7 +93,6 @@ def login_with_drissionpage(
         logger.error("Failed to load the login page")
         raise PageLoadError("Failed to load the login page")
 
-
     logger.trace("Clicking on the next button")
     page.ele(NEXT_BUTTON_TEXT).click()
 
@@ -81,15 +102,18 @@ def login_with_drissionpage(
         code_elem.click()
 
         # get the code from email
+        code = None
         try:
-            if gmail_credentials:
-                logger.trace(f"Getting email code for {username} through Gmail")
-                code = gmail_get_email_code(gmail_credentials)
-            elif imap and email:
-                logger.trace(f"Getting email code for {username} through IMAP")
-                code = asyncio.run(imap_get_email_code(imap, email))
+            if code := get_email_code(
+                username=username,
+                gmail_credentials=gmail_credentials,
+                imap=imap,
+                email=email,
+            ):
+                logger.trace("Inserting the code")
+                code_elem.input(code)
             else:
-                logger.error("No gmail or imap provided. Can't get the code")
+                logger.error("Failed to get the email code")
                 page.quit()
                 return None, None
         except Exception:
@@ -97,13 +121,15 @@ def login_with_drissionpage(
             page.quit()
             return None, None
 
-        code_elem.input(code)
+        # click on the next button
+        page.ele(NEXT_BUTTON_TEXT).click()
+
     except ElementNotFoundError:
         logger.trace("No element with 'Confirmation code'")
-
+    
     # check if they are asking for email
     try:
-        email_elem = page.ele(EMAIL_OR_PHONE_TEXT, timeout=5)
+        email_elem = page.ele(EMAILINPUT_SELECTOR, timeout=5)
         email_elem.click()
         email_elem.input(email)
         page.ele(NEXT_BUTTON_TEXT).click()
@@ -121,7 +147,6 @@ def login_with_drissionpage(
         page.quit()
         return None, None
 
-    # Find all button elements
     logger.trace("waiting for the login button")
     try:
         login_button = page.ele(LOGIN_BUTTON_SELECTOR, timeout=10)
@@ -131,6 +156,47 @@ def login_with_drissionpage(
         logger.error("Login button not found")
         page.quit()
         return None, None
+
+    # check if email code is asked, after the password
+    try:
+        code_elem = page.ele(CODEINPUT_SELECTOR, timeout=5)
+        code_elem.hover()
+        code_elem.click()
+
+        # get the code from email
+        code = None
+        try:
+            if code := get_email_code(
+                username=username,
+                gmail_credentials=gmail_credentials,
+                imap=imap,
+                email=email,
+            ):
+                logger.trace("Inserting the code")
+                code_elem.input(code)
+            else:
+                logger.error("Failed to get the email code")
+                page.quit()
+                return None, None
+        except Exception:
+            logger.exception("Failed to get the email code")
+            page.quit()
+            return None, None
+
+        # click on the next button
+        page.ele(NEXT_BUTTON_TEXT).click()
+
+    except ElementNotFoundError:
+        logger.trace("No element with 'Confirmation code'")
+
+    # check if they are asking for email after the password
+    try:
+        email_elem = page.ele(EMAILINPUT_SELECTOR, timeout=5)
+        email_elem.click()
+        email_elem.input(email)
+        page.ele(NEXT_BUTTON_TEXT).click()
+    except ElementNotFoundError:
+        logger.trace("They are not asking for email")
 
     # wait for What is happening?!
     logger.trace("waiting for the navigation bar to appear")
