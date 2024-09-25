@@ -63,7 +63,8 @@ def oauth2_login(authorized_info: GmailCredentials) -> Credentials:
 def _parse_code(email_message: EmailMessage) -> str | None:
     # NOTE: consider reading just the snippet of the email
     msg_time = email_message.get("Date", "").split("(")[0].strip()
-    msg_time = datetime.strptime(msg_time, "%a, %d %b %Y %H:%M:%S %z")
+    # follows the format: 'Thu, 15 Aug 2024 23:40:30 GMT'
+    msg_time = datetime.strptime(msg_time, "%a, %d %b %Y %H:%M:%S %Z")
 
     msg_subj = email_message.get("Subject", "").lower()
     msg_from = email_message.get("From", "").lower()
