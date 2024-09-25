@@ -9,6 +9,7 @@ from httpx import HTTPStatusError
 
 from .account import Account
 from .db import execute, fetchall, fetchone
+from .gmail import GmailCredentials
 from .logger import logger
 from .login import LoginConfig, login
 from .login_alternative import login_alternative
@@ -78,7 +79,7 @@ class AccountsPool:
         password: str,
         email: str,
         email_password: str,
-        gmail_credentials: dict[str, str],
+        gmail_credentials: GmailCredentials | None = None,
         user_agent: str | None = None,
         proxy: str | None = None,
         cookies: str | None = None,
@@ -87,6 +88,7 @@ class AccountsPool:
         qs = "SELECT * FROM accounts WHERE username = :username"
         rs = await fetchone(self._db_file, qs, {"username": username})
         if rs:
+            # TODO: overwrite existing account, at least for some fields
             logger.warning(f"Account {username} already exists")
             return
 
