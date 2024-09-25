@@ -17,6 +17,10 @@ class PageLoadError(Exception):
     pass
 
 
+class ElementLoadError(Exception):
+    pass
+
+
 def get_email_code(
     username: str,
     gmail_credentials: GmailCredentials | None = None,
@@ -38,8 +42,24 @@ def get_email_code(
     return code
 
 
+def return_none_anyway(retry_state: tenacity.RetryCallState) -> tuple[None, None]:
+    logger.warning(
+        "Failed after {} retries, with exception: {}",
+        retry_state.attempt_number,
+        retry_state.outcome._exception,
+    )
+    # TODO: figure out how to close the page from here
+
+    return None, None
+
+
 # TODO: create a exception handler to kill the page
-@tenacity.retry(stop=tenacity.stop_after_attempt(3), wait=tenacity.wait_fixed(5))
+@tenacity.retry(
+    stop=tenacity.stop_after_attempt(3),
+    wait=tenacity.wait_fixed(5),
+    retry=tenacity.retry_if_exception_type((PageLoadError, ElementLoadError)),
+    retry_error_callback=return_none_anyway,
+)
 def login_with_drissionpage(
     username: str,
     password: str,
@@ -126,7 +146,7 @@ def login_with_drissionpage(
 
     except ElementNotFoundError:
         logger.trace("No element with 'Confirmation code'")
-    
+
     # check if they are asking for email
     try:
         email_elem = page.ele(EMAILINPUT_SELECTOR, timeout=5)
@@ -144,8 +164,7 @@ def login_with_drissionpage(
         password_elem.input(password)
     except ElementNotFoundError:
         logger.error("Password input element not found")
-        page.quit()
-        return None, None
+        raise ElementLoadError("Password input element not found")
 
     logger.trace("waiting for the login button")
     try:
@@ -154,8 +173,7 @@ def login_with_drissionpage(
         login_button.click()
     except ElementNotFoundError:
         logger.error("Login button not found")
-        page.quit()
-        return None, None
+        raise ElementLoadError("Login button not found")
 
     # check if email code is asked, after the password
     try:
