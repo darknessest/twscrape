@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from email.message import Message as EmailMessage
 
+import tenacity
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
@@ -32,6 +33,10 @@ class GmailCredentials(JSONTrait):
 
     def get(self, key: str, default: object | None = None):
         return self.__dict__.get(key, default)
+    
+
+class NoEmailFoundError(Exception):
+    pass
 
 
 def oauth2_login(authorized_info: GmailCredentials) -> Credentials:
@@ -71,6 +76,7 @@ def _parse_code(email_message: EmailMessage) -> str | None:
 
     logger.trace("email's subject: {}", email_message["Subject"])
     logger.trace("email's from: {}", email_message["From"])
+    logger.trace("email's time: {}", msg_time)
     
     # content_types = email_message.get_content_maintype()
     # TODO: return this part if subject is not the code
@@ -91,6 +97,11 @@ def _parse_code(email_message: EmailMessage) -> str | None:
         return msg_subj.split(" ")[-1].strip()
     return None
 
+@tenacity.retry(
+    retry=tenacity.retry_if_exception_type(HttpError),
+    wait=tenacity.wait_full_jitter(max=20),
+    stop=tenacity.stop_after_attempt(5),
+)
 def _read_message(service, msg_id: str) -> EmailMessage:
     message_list = (
         service.users()
@@ -105,27 +116,33 @@ def _read_message(service, msg_id: str) -> EmailMessage:
     return email_message
 
 def get_emails(service, num_retries: int = 5) -> str | None:
-    for retry in range(num_retries):
-        logger.debug(f"Attempt {retry + 1}/{num_retries}")
-        try:
+    number_result = 0
+
+    for retry in tenacity.Retrying(
+        retry=tenacity.retry_if_exception_type((HttpError, NoEmailFoundError)),
+        wait=tenacity.wait_full_jitter(max=20),
+        stop=tenacity.stop_after_attempt(num_retries),
+        before=tenacity.before_log(logger, logger.level("TRACE").no),
+    ):
+        with retry:
             search_id = (
                 service.users().messages().list(userId="me", labelIds="UNREAD", maxResults=5).execute()
             )
             number_result = search_id["resultSizeEstimate"]
             logger.trace(f"Number of emails: {number_result}")
+            if number_result == 0:
+                logger.trace("No emails in the inbox")
+                raise NoEmailFoundError("No emails found")
 
-        except HttpError:
-            logger.exception("An error occurred while trying to get emails")
-            return None
+    if number_result > 0:
+        message_ids = search_id["messages"]
 
-        if number_result > 0:
-            message_ids = search_id["messages"]
+        for msg_id in message_ids:
+            email_message = _read_message(service, msg_id["id"])
 
-            for msg_id in message_ids:
-                email_message = _read_message(service, msg_id["id"])
+        if code := _parse_code(email_message):
+            return code
 
-            if code := _parse_code(email_message):
-                return code
     
     return None
 
