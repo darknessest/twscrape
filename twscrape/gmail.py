@@ -93,6 +93,7 @@ def _parse_code(email_message: EmailMessage) -> str | None:
     #     email_text = email_message.get_payload()
     
     if "info@x.com" in msg_from and "confirmation code is" in msg_subj:
+        logger.trace("Email is from x.com and contains the confirmation code")
         # eg. Your Twitter confirmation code is XXX
         return msg_subj.split(" ")[-1].strip()
     return None
@@ -138,10 +139,11 @@ def get_emails(service, num_retries: int = 5) -> str | None:
         message_ids = search_id["messages"]
 
         for msg_id in message_ids:
+            logger.trace("reading email: {}", msg_id["id"])
             email_message = _read_message(service, msg_id["id"])
 
-        if code := _parse_code(email_message):
-            return code
+            if code := _parse_code(email_message):
+                return code
 
     
     return None
