@@ -43,6 +43,10 @@ def oauth2_login(authorized_info: GmailCredentials) -> Credentials:
     creds = Credentials.from_authorized_user_info(info=authorized_info, scopes=SCOPES)
    
     if not creds or not creds.valid:
+        logger.debug("Credentials are invalid")
+        logger.debug("expired: {}", creds.expired)
+        logger.debug("refresh token: {}", creds.refresh_token)
+
         if creds and creds.expired and creds.refresh_token:
             logger.debug("Refreshing credentials")
             creds.refresh(Request())
