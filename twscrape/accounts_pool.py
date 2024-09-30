@@ -1,7 +1,7 @@
 import asyncio
 import sqlite3
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import TypedDict
 
 from fake_useragent import UserAgent
@@ -73,6 +73,53 @@ class AccountsPool:
         for x in accounts:
             await self.add_account(**x)
 
+    async def update_account(
+        self,
+        rs: sqlite3.Row,
+        password: str,
+        email: str,
+        gmail_credentials: GmailCredentials | None,
+        proxy: str | None,
+        cookies: str | None,
+    ):
+        existing_account = Account.from_rs(rs)
+        requires_relogin = False
+
+        # Check if new account details differ from existing ones and update if necessary
+        updates = {}
+        if existing_account.password != password:
+            updates["password"] = password
+            requires_relogin = True
+        if existing_account.email != email:
+            updates["email"] = email
+            requires_relogin = False
+        if existing_account.gmail_credentials != gmail_credentials:
+            updates["gmail_credentials"] = gmail_credentials
+            requires_relogin = False
+        if existing_account.proxy != proxy:
+            updates["proxy"] = proxy
+            requires_relogin = False
+        if cookies and existing_account.cookies != parse_cookies(cookies):
+            updates["cookies"] = parse_cookies(cookies)
+            requires_relogin = False
+
+        if requires_relogin:
+            # forces to relogin on `login_all` call (without a list of usernames)
+            logger.debug(
+                f"account {existing_account.username} requires relogin, setting active to false"
+            )
+            existing_account.active = False
+
+        if updates:
+            # Update the account with new values
+            for key, value in updates.items():
+                setattr(existing_account, key, value)
+            # Save the updated account
+            await self.save(existing_account)
+            logger.debug(f"Account {existing_account.username} updated successfully")
+        else:
+            logger.debug(f"No updates needed for account {existing_account.username}")
+
     async def add_account(
         self,
         username: str,
@@ -88,8 +135,12 @@ class AccountsPool:
         qs = "SELECT * FROM accounts WHERE username = :username"
         rs = await fetchone(self._db_file, qs, {"username": username})
         if rs:
-            # TODO: overwrite existing account, at least for some fields
             logger.warning(f"Account {username} already exists")
+            logger.debug(f"checking if we should update Account {username}")
+            await self.update_account(
+                rs, password, email, gmail_credentials, proxy, cookies
+            )
+
             return
 
         account = Account(
@@ -169,7 +220,9 @@ class AccountsPool:
                 return False
         except HTTPStatusError as e:
             rep = e.response
-            logger.error(f"Failed to login '{account.username}': {rep.status_code} - {rep.text}")
+            logger.error(
+                f"Failed to login '{account.username}': {rep.status_code} - {rep.text}"
+            )
             return False
         except Exception as e:
             logger.exception(f"Failed to login '{account.username}': {e}")
@@ -177,14 +230,24 @@ class AccountsPool:
         finally:
             await self.save(account)
 
-    async def login_all(self, usernames: list[str] | None = None):
+    async def login_all(
+        self, usernames: list[str] | None = None, time_constraint: bool = True
+    ):
+        day_ago = None
+        query_constraint = ""
+        params = dict()
+        if time_constraint:
+            day_ago = utc.now() - timedelta(days=1)
+            query_constraint = " AND last_used <= :day_ago"
+            params = {"day_ago": day_ago.isoformat()}
+
         if usernames is None:
-            qs = "SELECT * FROM accounts WHERE active = false AND error_msg IS NULL"
+            qs = f"SELECT * FROM accounts WHERE active = false AND error_msg IS NULL{query_constraint}"
         else:
             us = ",".join([f'"{x}"' for x in usernames])
-            qs = f"SELECT * FROM accounts WHERE username IN ({us})"
+            qs = f"SELECT * FROM accounts WHERE username IN ({us}){query_constraint}"
 
-        rs = await fetchall(self._db_file, qs)
+        rs = await fetchall(self._db_file, qs, params)
         accounts = [Account.from_rs(rs) for rs in rs]
         # await asyncio.gather(*[login(x) for x in self.accounts])
 
@@ -299,7 +362,9 @@ class AccountsPool:
         while True:
             account = await self.get_for_queue(queue)
             if not account:
-                if self._raise_when_no_account or get_env_bool("TWS_RAISE_WHEN_NO_ACCOUNT"):
+                if self._raise_when_no_account or get_env_bool(
+                    "TWS_RAISE_WHEN_NO_ACCOUNT"
+                ):
                     raise NoAccountError(f"No account available for queue {queue}")
 
                 if not msg_shown:
@@ -316,7 +381,9 @@ class AccountsPool:
                 continue
             else:
                 if msg_shown:
-                    logger.info(f"Continuing with account {account.username} on queue {queue}")
+                    logger.info(
+                        f"Continuing with account {account.username} on queue {queue}"
+                    )
 
             return account
 
@@ -388,7 +455,9 @@ class AccountsPool:
         items = sorted(items, key=lambda x: x["username"].lower())
         items = sorted(
             items,
-            key=lambda x: x["last_used"] or old_time if x["total_req"] > 0 else old_time,
+            key=lambda x: x["last_used"] or old_time
+            if x["total_req"] > 0
+            else old_time,
             reverse=True,
         )
         items = sorted(items, key=lambda x: x["active"], reverse=True)
