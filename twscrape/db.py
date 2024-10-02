@@ -149,7 +149,7 @@ async def fetchone(db_path: str, qs: str, params: dict | None = None):
 
 
 @lock_retry()
-async def fetchall(db_path: str, qs: str, params: dict | None = None):
+async def fetchall(db_path: str, qs: str, params: dict | list | None = None):
     async with DB(db_path) as db:
         async with db.execute(qs, params) as cur:
             rows = await cur.fetchall()
