@@ -234,26 +234,31 @@ class AccountsPool:
         self, usernames: list[str] | None = None, time_constraint: bool = True
     ):
         day_ago = None
-        query_constraint = ""
-        params = dict()
         if time_constraint:
             day_ago = utc.now() - timedelta(days=1)
-            query_constraint = " AND last_used <= :day_ago"
-            params = {"day_ago": day_ago.isoformat()}
 
         if usernames is None:
-            qs = f"SELECT * FROM accounts WHERE active = false AND error_msg IS NULL{query_constraint}"
+            qs = f"SELECT * FROM accounts WHERE active = false AND error_msg IS NULL"
         else:
-            us = ",".join([f'"{x}"' for x in usernames])
-            qs = f"SELECT * FROM accounts WHERE username IN ({us}){query_constraint}"
+            placeholders = ", ".join(["?" for _ in usernames])
+            qs = f"SELECT * FROM accounts WHERE username IN ({placeholders})"
 
-        rs = await fetchall(self._db_file, qs, params)
+        rs = await fetchall(self._db_file, qs, usernames)
         accounts = [Account.from_rs(rs) for rs in rs]
         # await asyncio.gather(*[login(x) for x in self.accounts])
 
         counter = {"total": len(accounts), "success": 0, "failed": 0}
         for i, x in enumerate(accounts, start=1):
-            logger.info(f"[{i}/{len(accounts)}] Logging in {x.username} - {x.email}")
+            if time_constraint and x.last_used and x.last_used > day_ago:
+                logger.debug(
+                    f"Skipping {x.username} because last used is too recent. Last used: {x.last_used}"
+                )
+                counter["failed"] += 1
+                continue
+
+            logger.info(
+                f"[{i}/{len(accounts)}] Logging in {x.username} - {x.email}"
+                )
             status = await self.login(x)
             counter["success" if status else "failed"] += 1
         return counter
