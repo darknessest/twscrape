@@ -178,6 +178,7 @@ class Tweet(JSONTrait):
     cashtags: list[str]
     mentionedUsers: list[UserRef]
     links: list[TextLink]
+    media: "Media"
     viewCount: int | None = None
     retweetedTweet: Optional["Tweet"] = None
     quotedTweet: Optional["Tweet"] = None
@@ -189,8 +190,8 @@ class Tweet(JSONTrait):
     source: str | None = None
     sourceUrl: str | None = None
     sourceLabel: str | None = None
-    media: Optional["Media"] = None
     card: Union[None, "SummaryCard", "PollCard", "BroadcastCard", "AudiospaceCard"] = None
+    possibly_sensitive: bool | None = None
     _type: str = "snscrape.modules.twitter.Tweet"
 
     # todo:
@@ -251,6 +252,7 @@ class Tweet(JSONTrait):
             sourceLabel=_get_source_label(obj),
             media=Media.parse(obj),
             card=_parse_card(obj, url),
+            possibly_sensitive=obj.get("possibly_sensitive", None),
         )
 
         # issue #42 – restore full rt text
