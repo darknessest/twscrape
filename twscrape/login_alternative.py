@@ -2,6 +2,7 @@ import asyncio
 from copy import deepcopy
 from imaplib import IMAP4_SSL
 
+import pyotp
 import tenacity
 from DrissionPage import ChromiumOptions, SessionOptions, WebPage
 from DrissionPage.errors import ElementNotFoundError
@@ -149,7 +150,7 @@ def login_with_drissionpage(
         page.ele(NEXT_BUTTON_TEXT).click()
 
     except ElementNotFoundError:
-        logger.trace("No element with 'Confirmation code'")
+        logger.trace("No element with 'Confirmation code' before the password")
 
     # check if they are asking for email
     try:
@@ -158,7 +159,7 @@ def login_with_drissionpage(
         email_elem.input(email)
         page.ele(NEXT_BUTTON_TEXT).click()
     except ElementNotFoundError:
-        logger.trace("They are not asking for email")
+        logger.trace("They are not asking for email before the password")
 
     # wait for the Password input
     logger.trace("waiting for the password input")
@@ -168,6 +169,9 @@ def login_with_drissionpage(
         password_elem.input(password)
     except ElementNotFoundError:
         logger.error("Password input element not found")
+        page.get_screenshot("logs/login_password_error.png")
+        logger.debug("html: {}", page.html)
+        logger.debug("session: {}", page.session)
         raise ElementLoadError("Password input element not found")
 
     logger.trace("waiting for the login button")
@@ -209,7 +213,7 @@ def login_with_drissionpage(
         page.ele(NEXT_BUTTON_TEXT).click()
 
     except ElementNotFoundError:
-        logger.trace("No element with 'Confirmation code'")
+        logger.trace("No element with 'Confirmation code' after the password")
 
     # check if they are asking for email after the password
     try:
@@ -218,15 +222,27 @@ def login_with_drissionpage(
         email_elem.input(email)
         page.ele(NEXT_BUTTON_TEXT).click()
     except ElementNotFoundError:
-        logger.trace("They are not asking for email")
+        logger.trace("They are not asking for email after the password")
 
     # check if they are asking for the MFA code
     try:
         mfa_elem = page.ele(MFA_CODE_SELECTOR, timeout=5)
+        mfa_elem.hover()
         mfa_elem.click()
-        mfa_elem.input(mfa_code)
+
+        if not mfa_code:
+            logger.error("MFA code is required")
+            page.quit()
+            return None, None
+
+        totp = pyotp.TOTP(mfa_code)
+
+        mfa_elem.input(totp.now())
         page.ele(NEXT_BUTTON_TEXT).click()
     except ElementNotFoundError:
+        page.get_screenshot("logs/mfa_stage.png")
+        logger.debug("html: {}", page.html)
+        logger.debug("session: {}", page.session)
         logger.trace("They are not asking for MFA code")
 
 
