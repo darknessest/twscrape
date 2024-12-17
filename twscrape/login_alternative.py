@@ -82,7 +82,7 @@ def login_with_drissionpage(
     CODEINPUT_SELECTOR = "tag:input@data-testid=ocfEnterTextTextInput@type=text"
     EMAILINPUT_SELECTOR = "tag:input@data-testid=ocfEnterTextTextInput@type=email"
     LOGIN_BUTTON_SELECTOR = "tag:button@data-testid=LoginForm_Login_Button"
-    MFA_CODE_SELECTOR = "tag:input@data-testid=ocfEnterTextTextInput@inputmode=numeric@type=text"
+    MFA_CODE_SELECTOR = "tag:input@data-testid=ocfEnterTextTextInput@inputmode=numeric"
 
     # urls
     LOGIN_URL = "https://x.com/i/flow/login"
