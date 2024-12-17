@@ -79,10 +79,9 @@ def login_with_drissionpage(
 
     # element selectors
     PASSWORD_SELECTOR = "tag:input@type=password"
-    CODEINPUT_SELECTOR = "tag:input@data-testid=ocfEnterTextTextInput@type=text"
-    EMAILINPUT_SELECTOR = "tag:input@data-testid=ocfEnterTextTextInput@type=email"
+    CODEINPUT_SELECTOR = "tag:input@@data-testid=ocfEnterTextTextInput@@type=text"
+    EMAILINPUT_SELECTOR = "tag:input@@data-testid=ocfEnterTextTextInput@@type=email"
     LOGIN_BUTTON_SELECTOR = "tag:button@data-testid=LoginForm_Login_Button"
-    MFA_CODE_SELECTOR = "tag:input@data-testid=ocfEnterTextTextInput@inputmode=numeric"
 
     # urls
     LOGIN_URL = "https://x.com/i/flow/login"
@@ -189,28 +188,46 @@ def login_with_drissionpage(
         code_elem.hover()
         code_elem.click()
 
-        # get the code from email
-        code = None
-        try:
-            if code := get_email_code(
-                username=username,
-                gmail_credentials=gmail_credentials,
-                imap=imap,
-                email=email,
-            ):
-                logger.trace("Inserting the code")
-                code_elem.input(code)
-            else:
-                logger.error("Failed to get the email code")
+       # check if it's an MFA code
+        if page.ele("code generator", timeout=5):
+            logger.trace("MFA code is required")
+            if not mfa_code:
+                logger.error("MFA code is required")
                 page.quit()
                 return None, None
-        except Exception:
-            logger.exception("Failed to get the email code")
-            page.quit()
-            return None, None
 
-        # click on the next button
-        page.ele(NEXT_BUTTON_TEXT).click()
+            totp = pyotp.TOTP(mfa_code)
+
+            code_elem.input(totp.now())
+            page.ele(NEXT_BUTTON_TEXT).click()
+        
+        else:
+            logger.trace("email code is required")
+
+            # get the code from email
+            code = None
+            try:
+                if code := get_email_code(
+                    username=username,
+                    gmail_credentials=gmail_credentials,
+                    imap=imap,
+                    email=email,
+                ):
+                    logger.trace("Inserting the code")
+                    code_elem.input(code)
+                else:
+                    logger.error("Failed to get the email code")
+                    page.quit()
+                    return None, None
+
+                # click on the next button
+                page.ele(NEXT_BUTTON_TEXT).click()
+
+            except Exception:
+                logger.exception("Failed to get the email code")
+                page.quit()
+                return None, None
+
 
     except ElementNotFoundError:
         logger.trace("No element with 'Confirmation code' after the password")
@@ -224,26 +241,26 @@ def login_with_drissionpage(
     except ElementNotFoundError:
         logger.trace("They are not asking for email after the password")
 
-    # check if they are asking for the MFA code
-    try:
-        mfa_elem = page.ele(MFA_CODE_SELECTOR, timeout=5)
-        mfa_elem.hover()
-        mfa_elem.click()
+    # # check if they are asking for the MFA code
+    # try:
+    #     mfa_elem = page.ele(MFA_CODE_SELECTOR, timeout=5)
+    #     mfa_elem.hover()
+    #     mfa_elem.click()
 
-        if not mfa_code:
-            logger.error("MFA code is required")
-            page.quit()
-            return None, None
+    #     if not mfa_code:
+    #         logger.error("MFA code is required")
+    #         page.quit()
+    #         return None, None
 
-        totp = pyotp.TOTP(mfa_code)
+    #     totp = pyotp.TOTP(mfa_code)
 
-        mfa_elem.input(totp.now())
-        page.ele(NEXT_BUTTON_TEXT).click()
-    except ElementNotFoundError:
-        page.get_screenshot("logs/mfa_stage.png")
-        logger.debug("html: {}", page.html)
-        logger.debug("session: {}", page.session)
-        logger.trace("They are not asking for MFA code")
+    #     mfa_elem.input(totp.now())
+    #     page.ele(NEXT_BUTTON_TEXT).click()
+    # except ElementNotFoundError:
+    #     page.get_screenshot("logs/mfa_stage.png")
+    #     logger.debug("html: {}", page.html)
+    #     logger.debug("session: {}", page.session)
+    #     logger.trace("They are not asking for MFA code")
 
 
     # wait for What is happening?!
