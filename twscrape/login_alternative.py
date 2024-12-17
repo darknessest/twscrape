@@ -64,6 +64,7 @@ def login_with_drissionpage(
     username: str,
     password: str,
     email: str | None,
+    mfa_code: str | None,
     user_agent: str | None = None,
     imap: IMAP4_SSL | None = None,
     gmail_credentials: GmailCredentials | None = None,
@@ -80,6 +81,7 @@ def login_with_drissionpage(
     CODEINPUT_SELECTOR = "tag:input@data-testid=ocfEnterTextTextInput@type=text"
     EMAILINPUT_SELECTOR = "tag:input@data-testid=ocfEnterTextTextInput@type=email"
     LOGIN_BUTTON_SELECTOR = "tag:button@data-testid=LoginForm_Login_Button"
+    MFA_CODE_SELECTOR = "tag:input@data-testid=ocfEnterTextTextInput@inputmode=numeric@type=text"
 
     # urls
     LOGIN_URL = "https://x.com/i/flow/login"
@@ -218,6 +220,16 @@ def login_with_drissionpage(
     except ElementNotFoundError:
         logger.trace("They are not asking for email")
 
+    # check if they are asking for the MFA code
+    try:
+        mfa_elem = page.ele(MFA_CODE_SELECTOR, timeout=5)
+        mfa_elem.click()
+        mfa_elem.input(mfa_code)
+        page.ele(NEXT_BUTTON_TEXT).click()
+    except ElementNotFoundError:
+        logger.trace("They are not asking for MFA code")
+
+
     # wait for What is happening?!
     logger.trace("waiting for the navigation bar to appear")
     try:
@@ -258,6 +270,7 @@ def login_alternative(
         username=acc.username,
         password=acc.password,
         email=acc.email,
+        mfa_code=acc.mfa_code,
         user_agent=acc.user_agent,
         gmail_credentials=gmail_creds,
         base_data_path=base_data_path,
