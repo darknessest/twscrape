@@ -40,6 +40,7 @@ class Account(JSONTrait):
         doc["headers"] = json.loads(doc["headers"])
         doc["cookies"] = json.loads(doc["cookies"])
         doc["gmail_credentials"] = GmailCredentials(**json.loads(doc["gmail_credentials"])) if doc.get("gmail_credentials") else None
+        doc["mfa_code"] = doc.get("mfa_code")
         doc["active"] = bool(doc["active"])
         doc["last_used"] = utc.from_iso(doc["last_used"]) if doc["last_used"] else None
         return Account(**doc)
@@ -51,6 +52,7 @@ class Account(JSONTrait):
         rs["headers"] = json.dumps(rs["headers"])
         rs["cookies"] = json.dumps(rs["cookies"])
         rs["gmail_credentials"] = self.gmail_credentials.json() if self.gmail_credentials else None
+        rs["mfa_code"] = self.mfa_code
         rs["last_used"] = rs["last_used"].isoformat() if rs["last_used"] else None
         return rs
 
