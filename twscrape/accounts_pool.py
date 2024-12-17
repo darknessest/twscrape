@@ -81,6 +81,7 @@ class AccountsPool:
         gmail_credentials: GmailCredentials | None,
         proxy: str | None,
         cookies: str | None,
+        mfa_code: str | None,
     ):
         existing_account = Account.from_rs(rs)
         requires_relogin = False
@@ -101,6 +102,9 @@ class AccountsPool:
             requires_relogin = False
         if cookies and existing_account.cookies != parse_cookies(cookies):
             updates["cookies"] = parse_cookies(cookies)
+            requires_relogin = False
+        if mfa_code and existing_account.mfa_code != mfa_code:
+            updates["mfa_code"] = mfa_code
             requires_relogin = False
 
         if requires_relogin:
@@ -138,7 +142,13 @@ class AccountsPool:
             logger.warning(f"Account {username} already exists")
             logger.debug(f"checking if we should update Account {username}")
             await self.update_account(
-                rs, password, email, gmail_credentials, proxy, cookies
+                rs=rs, 
+                password=password,
+                email=email,
+                gmail_credentials=gmail_credentials,
+                proxy=proxy,
+                cookies=cookies,
+                mfa_code=mfa_code
             )
 
             return
