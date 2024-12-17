@@ -64,6 +64,7 @@ def login_with_drissionpage(
     username: str,
     password: str,
     email: str | None,
+    user_agent: str | None = None,
     imap: IMAP4_SSL | None = None,
     gmail_credentials: GmailCredentials | None = None,
     base_data_path: str = "drission",
@@ -93,7 +94,8 @@ def login_with_drissionpage(
     co._arguments.append("--disable-dev-shm-usage")
     co._arguments.append("--window-size=1024,768")
 
-    # co.set_user_agent(UserAgent().chrome)
+    if user_agent:
+        co.set_user_agent(user_agent)
     # co.set_load_mode("eager")
     so = SessionOptions()
     page = WebPage(chromium_options=co, session_or_options=so)
@@ -256,6 +258,7 @@ def login_alternative(
         username=acc.username,
         password=acc.password,
         email=acc.email,
+        user_agent=acc.user_agent,
         gmail_credentials=gmail_creds,
         base_data_path=base_data_path,
     )
