@@ -303,6 +303,7 @@ def login_alternative(
         username=acc.username,
         password=acc.password,
         email=acc.email,
+        imap=imap,
         mfa_code=acc.mfa_code,
         user_agent=acc.user_agent,
         gmail_credentials=gmail_creds,
