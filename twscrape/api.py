@@ -5,7 +5,17 @@ from httpx import Response
 
 from .accounts_pool import AccountsPool
 from .logger import set_log_level
-from .models import Tweet, User, parse_trends, parse_tweet, parse_tweets, parse_user, parse_users
+from .models import (
+    AccountAbout,
+    Tweet,
+    User,
+    parse_about,
+    parse_trends,
+    parse_tweet,
+    parse_tweets,
+    parse_user,
+    parse_users,
+)
 from .queue_client import QueueClient
 from .utils import encode_params, find_obj, get_by_path
 
@@ -21,6 +31,7 @@ OP_UserTweets = "HeWHY26ItCfUmm1e6ITjeA/UserTweets"
 OP_UserTweetsAndReplies = "OAx9yEcW3JA9bPo63pcYlA/UserTweetsAndReplies"
 OP_ListLatestTweetsTimeline = "BkauSnPUDQTeeJsxq17opA/ListLatestTweetsTimeline"
 OP_BlueVerifiedFollowers = "ZpmVpf_fBIUgdPErpq2wWg/BlueVerifiedFollowers"
+OP_AboutAccountQuery = "zs_jFPFT78rBpXv9Z3U2YQ/AboutAccountQuery"
 OP_UserCreatorSubscriptions = "7qcGrVKpcooih_VvJLA1ng/UserCreatorSubscriptions"
 OP_UserMedia = "vFPc2LVIu7so2uA_gHQAdg/UserMedia"
 OP_Bookmarks = "-LGfdImKeQz0xS_jjUwzlA/Bookmarks"
@@ -226,6 +237,16 @@ class API:
     async def user_by_login(self, login: str, kv: KV = None) -> User | None:
         rep = await self.user_by_login_raw(login, kv=kv)
         return parse_user(rep) if rep else None
+
+    async def user_about_raw(self, username: str, kv: KV = None):
+        op = OP_AboutAccountQuery
+        kv = {"screenName": username, **(kv or {})}
+        ft = {"responsive_web_graphql_timeline_navigation_enabled": True}
+        return await self._gql_item(op, kv, ft)
+
+    async def user_about(self, username: str, kv: KV = None) -> AccountAbout | None:
+        rep = await self.user_about_raw(username, kv=kv)
+        return parse_about(rep) if rep else None
 
     # tweet_details
 
