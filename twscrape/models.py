@@ -81,6 +81,52 @@ class TextLink(JSONTrait):
 
 
 @dataclass
+class CommunityRule(JSONTrait):
+    id_str: str
+    name: str
+    description: str
+
+    @staticmethod
+    def parse(obj: dict):
+        return CommunityRule(
+            id_str=str(obj.get("rest_id", obj.get("id_str", ""))),
+            name=obj.get("name", ""),
+            description=obj.get("description", ""),
+        )
+
+
+@dataclass
+class Community(JSONTrait):
+    id: int
+    id_str: str
+    name: str
+    description: str | None
+    memberCount: int
+    moderatorCount: int
+    rules: list[CommunityRule]
+    topicId: str | None = None
+    topicName: str | None = None
+    isNsfw: bool | None = None
+
+    @staticmethod
+    def parse(obj: dict):
+        topic = obj.get("primary_community_topic") or {}
+        rules = [CommunityRule.parse(x) for x in obj.get("rules", [])]
+        return Community(
+            id=int(obj["id_str"]),
+            id_str=obj["id_str"],
+            name=obj.get("name", ""),
+            description=obj.get("description"),
+            memberCount=obj.get("member_count", 0),
+            moderatorCount=obj.get("moderator_count", 0),
+            rules=rules,
+            topicId=topic.get("topic_id"),
+            topicName=topic.get("topic_name"),
+            isNsfw=obj.get("is_nsfw"),
+        )
+
+
+@dataclass
 class UserRef(JSONTrait):
     id: int
     id_str: str
@@ -763,6 +809,18 @@ def parse_trend(rep: httpx.Response) -> Trend | None:
         return None
     except Exception as e:
         logger.error(f"Failed to parse trend - {type(e)}:\n{traceback.format_exc()}")
+        return None
+
+
+def parse_community(rep: httpx.Response | dict) -> Community | None:
+    try:
+        res = rep if isinstance(rep, dict) else rep.json()
+        community = res.get("data", {}).get("community")
+        if not community:
+            return None
+        return Community.parse(community)
+    except Exception as e:
+        logger.error(f"Failed to parse community - {type(e)}:\n{traceback.format_exc()}")
         return None
 
 

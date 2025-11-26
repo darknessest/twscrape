@@ -5,7 +5,17 @@ from httpx import Response
 
 from .accounts_pool import AccountsPool
 from .logger import set_log_level
-from .models import Tweet, User, parse_trends, parse_tweet, parse_tweets, parse_user, parse_users
+from .models import (
+    Community,
+    Tweet,
+    User,
+    parse_community,
+    parse_trends,
+    parse_tweet,
+    parse_tweets,
+    parse_user,
+    parse_users,
+)
 from .queue_client import QueueClient
 from .utils import encode_params, find_obj, get_by_path
 
@@ -25,6 +35,10 @@ OP_UserCreatorSubscriptions = "7qcGrVKpcooih_VvJLA1ng/UserCreatorSubscriptions"
 OP_UserMedia = "vFPc2LVIu7so2uA_gHQAdg/UserMedia"
 OP_Bookmarks = "-LGfdImKeQz0xS_jjUwzlA/Bookmarks"
 OP_GenericTimelineById = "CT0YFEFf5GOYa5DJcxM91w/GenericTimelineById"
+OP_CommunityTweetsTimeline = "mvvfN7tozrFnot9Rfbp_Mw/CommunityTweetsTimeline"
+OP_MembersSliceTimeline_Query = "WSbJGJjZaVasSj9bnqSZSA/membersSliceTimeline_Query"
+OP_ModeratorsSliceTimeline_Query = "GBMT3GOWy5dYsYC4XJfvow/moderatorsSliceTimeline_Query"
+OP_CommunityQuery = "uBpODvS60xZ1q2L88d-W2A/CommunityQuery"
 
 GQL_URL = "https://x.com/i/api/graphql"
 GQL_FEATURES = {  # search values here (view source) https://x.com/
@@ -42,8 +56,11 @@ GQL_FEATURES = {  # search values here (view source) https://x.com/
     "responsive_web_enhance_cards_enabled": False,
     "responsive_web_graphql_exclude_directive_enabled": True,
     "responsive_web_graphql_skip_user_profile_image_extensions_enabled": False,
+    "responsive_web_grok_community_note_auto_translation_is_enabled": False,
     "responsive_web_graphql_timeline_navigation_enabled": True,
+    "responsive_web_grok_imagine_annotation_enabled": False,
     "responsive_web_media_download_video_enabled": False,
+    "responsive_web_profile_redirect_enabled": True,
     "responsive_web_twitter_article_tweet_consumption_enabled": True,
     "rweb_tipjar_consumption_enabled": True,
     "rweb_video_timestamps_enabled": True,
@@ -514,3 +531,85 @@ class API:
             async for rep in gen:
                 for x in parse_tweets(rep.json(), limit):
                     yield x
+
+    # Community members
+
+    async def community_members_raw(self, community_id: str, limit=-1, kv: KV = None):
+        op = OP_MembersSliceTimeline_Query
+        kv = {
+            "communityId": str(community_id),
+            "count": 20,
+            "includePromotedContent": False,
+            **(kv or {}),
+        }
+        async with aclosing(self._gql_items(op, kv, limit=limit)) as gen:
+            async for x in gen:
+                yield x
+
+    async def community_members(self, community_id: str, limit=-1, kv: KV = None):
+        async with aclosing(self.community_members_raw(community_id, limit=limit, kv=kv)) as gen:
+            async for rep in gen:
+                for x in parse_users(rep, limit):
+                    yield x
+
+    # Community moderators
+
+    async def community_moderators_raw(self, community_id: str, limit=-1, kv: KV = None):
+        op = OP_ModeratorsSliceTimeline_Query
+        kv = {
+            "communityId": str(community_id),
+            "count": 20,
+            "includePromotedContent": False,
+            **(kv or {}),
+        }
+        async with aclosing(self._gql_items(op, kv, limit=limit)) as gen:
+            async for x in gen:
+                yield x
+
+    async def community_moderators(self, community_id: str, limit=-1, kv: KV = None):
+        async with aclosing(self.community_moderators_raw(community_id, limit=limit, kv=kv)) as gen:
+            async for rep in gen:
+                for x in parse_users(rep, limit):
+                    yield x
+
+    # Community tweets timeline
+
+    async def community_tweets_raw(self, community_id: str, limit=-1, kv: KV = None):
+        op = OP_CommunityTweetsTimeline
+        kv = {
+            "communityId": str(community_id),
+            "count": 40,
+            "displayLocation": "Community",
+            "rankingMode": "Relevance",
+            "withCommunity": True,
+            "includePromotedContent": False,
+            "withQuickPromoteEligibilityTweetFields": True,
+            "withVoice": True,
+            "withV2Timeline": True,
+            **(kv or {}),
+        }
+        async with aclosing(self._gql_items(op, kv, limit=limit)) as gen:
+            async for x in gen:
+                yield x
+
+    async def community_tweets(self, community_id: str, limit=-1, kv: KV = None):
+        async with aclosing(self.community_tweets_raw(community_id, limit=limit, kv=kv)) as gen:
+            async for rep in gen:
+                for x in parse_tweets(rep, limit):
+                    yield x
+
+    async def community_info_raw(self, community_id: str, kv: KV = None):
+        op = OP_CommunityQuery
+        kv = {
+            "communityId": str(community_id),
+            **(kv or {}),
+        }
+        ft = {
+            "c9s_list_members_action_api_enabled": False,
+            "c9s_superc9s_indication_enabled": False,
+        }
+        return await self._gql_item(op, kv, ft)
+
+    async def community_info(self, community_id: str, kv: KV = None) -> Community | None:
+        rep = await self.community_info_raw(community_id, kv=kv)
+        return parse_community(rep) if rep else None
