@@ -56,7 +56,7 @@ def get_scripts_list(text: str):
         # Twitter started returning malformed JSON with unquoted keys
         try:
             fixed_scripts = re.sub(
-                r'([,\{])(\s*)([\w]+_[\w_]+)(\s*):',
+                r'([,\{])(\s*)([\w$]+)(\s*):(?=\s*")',
                 r'\1\2"\3"\4:',
                 scripts
             )
