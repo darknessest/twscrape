@@ -23,7 +23,7 @@ pip install twscrape
 ```
 Or development version:
 ```bash
-pip install git+https://github.com/vladkens/twscrape.git
+pip install git+https://github.com/darknessest/twscrape.git
 ```
 
 ## Features
