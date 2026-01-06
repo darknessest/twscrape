@@ -151,7 +151,7 @@ class AccountAbout(JSONTrait):
         return AccountAbout(
             screen_name=core.get("screen_name", ""),
             name=core.get("name", ""),
-            rest_id=int_or(obj.get("rest_id")),
+            rest_id=int_or(obj, "rest_id"),
             account_based_in=about.get("account_based_in"),
             location_accurate=about.get("location_accurate"),
             affiliate_username=about.get("affiliate_username"),
