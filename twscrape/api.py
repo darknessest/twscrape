@@ -65,6 +65,7 @@ GQL_FEATURES = {  # search values here (view source) https://x.com/
     "responsive_web_grok_analysis_button_from_backend": True,
     "responsive_web_grok_analyze_button_fetch_trends_enabled": False,
     "responsive_web_grok_analyze_post_followups_enabled": True,
+    "responsive_web_grok_annotations_enabled": True,
     "responsive_web_grok_image_annotation_enabled": True,
     "responsive_web_grok_imagine_annotation_enabled": True,
     "responsive_web_grok_share_attachment_enabled": True,
