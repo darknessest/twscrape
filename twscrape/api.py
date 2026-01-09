@@ -40,7 +40,9 @@ OP_Bookmarks = "kg_eDwF_ttJXsAaMYczXWA/Bookmarks"
 OP_GenericTimelineById = "tRxcfGr2InIgfghljPlH-Q/GenericTimelineById"
 OP_CommunityTweetsTimeline = "Fiu02lTLRwvfYmRvGrpuiQ/CommunityTweetsTimeline"
 OP_MembersSliceTimeline_Query = "WSbJGJjZaVasSj9bnqSZSA/membersSliceTimeline_Query"
-OP_ModeratorsSliceTimeline_Query = "GBMT3GOWy5dYsYC4XJfvow/moderatorsSliceTimeline_Query"
+OP_ModeratorsSliceTimeline_Query = (
+    "GBMT3GOWy5dYsYC4XJfvow/moderatorsSliceTimeline_Query"
+)
 OP_CommunityQuery = "uBpODvS60xZ1q2L88d-W2A/CommunityQuery"
 
 GQL_URL = "https://x.com/i/api/graphql"
@@ -56,6 +58,7 @@ GQL_FEATURES = {  # search values here (view source) https://x.com/
     "longform_notetweets_inline_media_enabled": True,
     "longform_notetweets_rich_text_read_enabled": True,
     "premium_content_api_read_enabled": False,
+    "post_ctas_fetch_enabled": True,
     "profile_label_improvements_pcf_label_in_post_enabled": True,
     "responsive_web_edit_tweet_api_enabled": True,
     "responsive_web_enhance_cards_enabled": False,
@@ -65,13 +68,12 @@ GQL_FEATURES = {  # search values here (view source) https://x.com/
     "responsive_web_grok_analysis_button_from_backend": True,
     "responsive_web_grok_analyze_button_fetch_trends_enabled": False,
     "responsive_web_grok_analyze_post_followups_enabled": True,
-    "responsive_web_grok_annotations_enabled": True,
+    "responsive_web_grok_annotations_enabled": False,
     "responsive_web_grok_image_annotation_enabled": True,
     "responsive_web_grok_imagine_annotation_enabled": True,
     "responsive_web_grok_share_attachment_enabled": True,
-    "responsive_web_grok_show_grok_translated_post": True,
+    "responsive_web_grok_show_grok_translated_post": False,
     "responsive_web_jetfuel_frame": True,
-    "responsive_web_media_download_video_enabled": False,
     "responsive_web_profile_redirect_enabled": False,
     "responsive_web_twitter_article_tweet_consumption_enabled": True,
     "rweb_tipjar_consumption_enabled": True,
@@ -101,7 +103,9 @@ class API:
         if isinstance(pool, AccountsPool):
             self.pool = pool
         elif isinstance(pool, str):
-            self.pool = AccountsPool(db_file=pool, raise_when_no_account=raise_when_no_account)
+            self.pool = AccountsPool(
+                db_file=pool, raise_when_no_account=raise_when_no_account
+            )
         else:
             self.pool = AccountsPool(raise_when_no_account=raise_when_no_account)
 
@@ -112,7 +116,9 @@ class API:
 
     # general helpers
 
-    def _is_end(self, rep: Response, q: str, res: list, cur: str | None, cnt: int, lim: int):
+    def _is_end(
+        self, rep: Response, q: str, res: list, cur: str | None, cnt: int, lim: int
+    ):
         new_count = len(res)
         new_total = cnt + new_count
 
@@ -135,7 +141,9 @@ class API:
         queue, cur, cnt, active = op.split("/")[-1], None, 0, True
         kv, ft = {**kv}, {**GQL_FEATURES, **(ft or {})}
 
-        async with QueueClient(self.pool, queue, self.debug, proxy=self.proxy) as client:
+        async with QueueClient(
+            self.pool, queue, self.debug, proxy=self.proxy
+        ) as client:
             while active:
                 params = {"variables": kv, "features": ft}
                 if cur is not None:
@@ -170,7 +178,9 @@ class API:
     async def _gql_item(self, op: str, kv: dict, ft: dict | None = None):
         ft = ft or {}
         queue = op.split("/")[-1]
-        async with QueueClient(self.pool, queue, self.debug, proxy=self.proxy) as client:
+        async with QueueClient(
+            self.pool, queue, self.debug, proxy=self.proxy
+        ) as client:
             params = {"variables": {**kv}, "features": {**GQL_FEATURES, **ft}}
             return await client.get(f"{GQL_URL}/{op}", params=encode_params(params))
 
@@ -345,7 +355,9 @@ class API:
                 yield x
 
     async def verified_followers(self, uid: int, limit=-1, kv: KV = None):
-        async with aclosing(self.verified_followers_raw(uid, limit=limit, kv=kv)) as gen:
+        async with aclosing(
+            self.verified_followers_raw(uid, limit=limit, kv=kv)
+        ) as gen:
             async for rep in gen:
                 for x in parse_users(rep.json(), limit):
                     yield x
@@ -375,7 +387,12 @@ class API:
 
     async def subscriptions_raw(self, uid: int, limit=-1, kv: KV = None):
         op = OP_UserCreatorSubscriptions
-        kv = {"userId": str(uid), "count": 20, "includePromotedContent": False, **(kv or {})}
+        kv = {
+            "userId": str(uid),
+            "count": 20,
+            "includePromotedContent": False,
+            **(kv or {}),
+        }
         async with aclosing(self._gql_items(op, kv, limit=limit)) as gen:
             async for x in gen:
                 yield x
@@ -446,7 +463,9 @@ class API:
                 yield x
 
     async def user_tweets_and_replies(self, uid: int, limit=-1, kv: KV = None):
-        async with aclosing(self.user_tweets_and_replies_raw(uid, limit=limit, kv=kv)) as gen:
+        async with aclosing(
+            self.user_tweets_and_replies_raw(uid, limit=limit, kv=kv)
+        ) as gen:
             async for rep in gen:
                 for x in parse_tweets(rep.json(), limit):
                     yield x
@@ -475,7 +494,9 @@ class API:
                 for x in parse_tweets(rep, limit):
                     # sometimes some tweets without media, so skip them
                     media_count = (
-                        len(x.media.photos) + len(x.media.videos) + len(x.media.animated)
+                        len(x.media.photos)
+                        + len(x.media.videos)
+                        + len(x.media.animated)
                         if x.media
                         else 0
                     )
@@ -570,14 +591,18 @@ class API:
                 yield x
 
     async def community_members(self, community_id: str, limit=-1, kv: KV = None):
-        async with aclosing(self.community_members_raw(community_id, limit=limit, kv=kv)) as gen:
+        async with aclosing(
+            self.community_members_raw(community_id, limit=limit, kv=kv)
+        ) as gen:
             async for rep in gen:
                 for x in parse_users(rep, limit):
                     yield x
 
     # Community moderators
 
-    async def community_moderators_raw(self, community_id: str, limit=-1, kv: KV = None):
+    async def community_moderators_raw(
+        self, community_id: str, limit=-1, kv: KV = None
+    ):
         op = OP_ModeratorsSliceTimeline_Query
         kv = {
             "communityId": str(community_id),
@@ -590,7 +615,9 @@ class API:
                 yield x
 
     async def community_moderators(self, community_id: str, limit=-1, kv: KV = None):
-        async with aclosing(self.community_moderators_raw(community_id, limit=limit, kv=kv)) as gen:
+        async with aclosing(
+            self.community_moderators_raw(community_id, limit=limit, kv=kv)
+        ) as gen:
             async for rep in gen:
                 for x in parse_users(rep, limit):
                     yield x
@@ -616,7 +643,9 @@ class API:
                 yield x
 
     async def community_tweets(self, community_id: str, limit=-1, kv: KV = None):
-        async with aclosing(self.community_tweets_raw(community_id, limit=limit, kv=kv)) as gen:
+        async with aclosing(
+            self.community_tweets_raw(community_id, limit=limit, kv=kv)
+        ) as gen:
             async for rep in gen:
                 for x in parse_tweets(rep, limit):
                     yield x
@@ -633,6 +662,8 @@ class API:
         }
         return await self._gql_item(op, kv, ft)
 
-    async def community_info(self, community_id: str, kv: KV = None) -> Community | None:
+    async def community_info(
+        self, community_id: str, kv: KV = None
+    ) -> Community | None:
         rep = await self.community_info_raw(community_id, kv=kv)
         return parse_community(rep) if rep else None
