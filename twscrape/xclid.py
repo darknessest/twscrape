@@ -46,10 +46,79 @@ def script_url(k: str, v: str):
     return f"https://abs.twimg.com/responsive-web/client-web/{k}.{v}.js"
 
 
+def _fix_js_object_literal(text: str) -> str:
+    return re.sub(r'([,\{])(\s*)([\w$]+)(\s*):(?=\s*")', r'\1\2"\3"\4:', text)
+
+
+def _extract_balanced_objects(text: str, start_idx: int) -> list[str]:
+    items = []
+    i = start_idx
+
+    while i < len(text):
+        if text[i] != "{":
+            i += 1
+            continue
+
+        depth = 0
+        in_str = False
+        escaped = False
+
+        for j in range(i, len(text)):
+            ch = text[j]
+            if in_str:
+                if escaped:
+                    escaped = False
+                elif ch == "\\":
+                    escaped = True
+                elif ch == '"':
+                    in_str = False
+                continue
+
+            if ch == '"':
+                in_str = True
+            elif ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    items.append(text[i:j + 1])
+                    i = j
+                    break
+
+        i += 1
+
+    return items
+
+
+def _parse_runtime_manifest(text: str):
+    start = text.find("g.u=e=>(")
+    end = text.find('[e]+"a.js"', start)
+    if start == -1 or end == -1:
+        return
+
+    objects = _extract_balanced_objects(text[start:end], 0)
+    if len(objects) < 2:
+        return
+
+    try:
+        names = json.loads(_fix_js_object_literal(objects[0]))
+        hashes = json.loads(_fix_js_object_literal(objects[1]))
+    except json.decoder.JSONDecodeError:
+        return
+
+    for key, value in hashes.items():
+        yield script_url(str(names.get(key, key)), f"{value}a")
+
+
 def get_scripts_list(text: str):
     # Older X bundles exposed a direct chunk-name -> hash map in the HTML.
-    # Newer builds do not, but they still preload a smaller set of client-web
-    # scripts that is enough for degraded operation instead of crashing.
+    # Current builds use a webpack runtime with separate chunk-name and hash
+    # maps. Fall back to preloaded scripts only when neither manifest exists.
+    for url in _parse_runtime_manifest(text):
+        yield url
+    if 'g.u=e=>(' in text:
+        return
+
     legacy_marker = 'e=>e+"."+'
     if legacy_marker not in text:
         for url in re.findall(r'https://abs\.twimg\.com/responsive-web/client-web/[^"\']+\.js', text):
@@ -64,11 +133,7 @@ def get_scripts_list(text: str):
         # Fix unquoted keys like: node_modules_pnpm_ws_8_18_0_node_modules_ws_browser_js
         # Twitter started returning malformed JSON with unquoted keys
         try:
-            fixed_scripts = re.sub(
-                r'([,\{])(\s*)([\w$]+)(\s*):(?=\s*")',
-                r'\1\2"\3"\4:',
-                scripts
-            )
+            fixed_scripts = _fix_js_object_literal(scripts)
             for k, v in json.loads(fixed_scripts).items():
                 yield script_url(k, f"{v}a")
         except Exception:

@@ -2,6 +2,7 @@
 import pytest
 from twscrape.xclid import get_scripts_list
 
+
 def test_get_scripts_list_malformed_json():
     # Test case with various malformed JSON (unquoted keys, including no underscores and numeric)
     malformed_text_content = 'node_modules_pnpm_ws_8_18_0_node_modules_ws_browser_js:"12345",runtime:"67890",999:"000"'
@@ -24,3 +25,16 @@ def test_get_scripts_list_normal_json():
     assert len(scripts) == 2
     assert "https://abs.twimg.com/responsive-web/client-web/normal_key.12345a.js" in scripts
     assert "https://abs.twimg.com/responsive-web/client-web/another_key.67890a.js" in scripts
+
+
+def test_get_scripts_list_runtime_manifest():
+    runtime_text = (
+        'stuff... g.u=e=>(({1:"ondemand.s",2:"bundle.UserProfile"})[e]+"."+'
+        '{1:"fe855d2",2:"175e11a"}[e]+"a.js") ... stuff'
+    )
+
+    scripts = list(get_scripts_list(runtime_text))
+
+    assert len(scripts) == 2
+    assert "https://abs.twimg.com/responsive-web/client-web/ondemand.s.fe855d2a.js" in scripts
+    assert "https://abs.twimg.com/responsive-web/client-web/bundle.UserProfile.175e11aa.js" in scripts
