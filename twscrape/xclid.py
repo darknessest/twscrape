@@ -47,7 +47,16 @@ def script_url(k: str, v: str):
 
 
 def get_scripts_list(text: str):
-    scripts = text.split('e=>e+"."+')[1].split('[e]+"a.js"')[0]
+    # Older X bundles exposed a direct chunk-name -> hash map in the HTML.
+    # Newer builds do not, but they still preload a smaller set of client-web
+    # scripts that is enough for degraded operation instead of crashing.
+    legacy_marker = 'e=>e+"."+'
+    if legacy_marker not in text:
+        for url in re.findall(r'https://abs\.twimg\.com/responsive-web/client-web/[^"\']+\.js', text):
+            yield url
+        return
+
+    scripts = text.split(legacy_marker)[1].split('[e]+"a.js"')[0]
     try:
         for k, v in json.loads(scripts).items():
             yield script_url(k, f"{v}a")
