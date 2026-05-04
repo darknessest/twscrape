@@ -2,7 +2,7 @@ import asyncio
 import json
 import os
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlparse
 
 import httpx
 from httpx import AsyncClient, Response
@@ -14,6 +14,7 @@ from .xclid import XClIdGen
 
 ReqParams = dict[str, str | int] | None
 TMP_TS = utc.now().isoformat().split(".")[0].replace("T", "_").replace(":", "-")[0:16]
+SENSITIVE_PARAM_KEYS = {"password", "email", "email_password", "token", "auth", "authorization", "cookie"}
 
 
 class HandledError(Exception): ...
@@ -111,6 +112,66 @@ def dump_rep(rep: Response):
     txt = "\n".join(msg)
     with open(outfile, "w") as f:
         f.write(txt)
+
+
+def _shorten(value: Any, limit=500):
+    text = value if isinstance(value, str) else repr(value)
+    if len(text) <= limit:
+        return text
+
+    return f"{text[:limit]}...<truncated {len(text) - limit} chars>"
+
+
+def _redact_param(key: str, value: Any):
+    key_l = key.lower()
+    if any(x in key_l for x in SENSITIVE_PARAM_KEYS):
+        return "<redacted>"
+
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return _shorten(value)
+
+        if isinstance(parsed, dict):
+            return {
+                "_json_keys": sorted(parsed.keys()),
+                "_json_preview": _shorten(parsed, 300),
+            }
+
+    return _shorten(value)
+
+
+def _format_req_params(params: ReqParams):
+    if not params:
+        return None
+
+    return {k: _redact_param(k, v) for k, v in params.items()}
+
+
+def _format_unknown_error_context(
+    ctx: Ctx,
+    queue: str,
+    method: str,
+    url: str,
+    params: ReqParams,
+    unknown_retry: int,
+    connection_retry: int,
+):
+    parsed = urlparse(url)
+    query_keys = sorted({k for k, _ in parse_qsl(parsed.query, keep_blank_values=True)})
+
+    return {
+        "queue": queue,
+        "account": ctx.acc.username,
+        "account_req_count": ctx.req_count,
+        "method": method,
+        "url": f"{parsed.scheme}://{parsed.netloc}{parsed.path}",
+        "query_keys": query_keys,
+        "params": _format_req_params(params),
+        "unknown_retry": unknown_retry,
+        "connection_retry": connection_retry,
+    }
 
 
 class QueueClient:
@@ -282,11 +343,21 @@ class QueueClient:
             except Exception as e:
                 unknown_retry += 1
                 if unknown_retry >= 3:
+                    error_context = _format_unknown_error_context(
+                        ctx,
+                        self.queue,
+                        method,
+                        url,
+                        params,
+                        unknown_retry,
+                        connection_retry,
+                    )
                     msg = [
                         "Unknown error. Account timeouted for 15 minutes.",
                         "Create issue please: https://github.com/vladkens/twscrape/issues",
                         f"If it mistake, you can unlock accounts with `twscrape reset_locks`. Err: {type(e)}: {e}",
+                        f"Context: {json.dumps(error_context, default=str, sort_keys=True)}",
                     ]
 
-                    logger.warning(" ".join(msg))
+                    logger.opt(exception=e).warning(" ".join(msg))
                     await self._close_ctx(utc.ts() + 60 * 15)  # 15 minutes

@@ -4,7 +4,7 @@ import httpx
 from pytest_httpx import HTTPXMock
 
 from twscrape.accounts_pool import AccountsPool
-from twscrape.queue_client import QueueClient
+from twscrape.queue_client import QueueClient, _format_unknown_error_context
 
 DB_FILE = "/tmp/twscrape_test_queue_client.db"
 URL = "https://example.com/api"
@@ -156,3 +156,44 @@ async def test_ctx_closed_on_break(httpx_mock: HTTPXMock, client_fixture: CF):
 
     # ctx should be None after break
     assert client.ctx is None
+
+
+async def test_unknown_error_context_redacts_sensitive_params(client_fixture: CF):
+    _, client = client_fixture
+
+    await client.__aenter__()
+    assert client.ctx is not None
+
+    ctx = client.ctx
+    ctx.req_count = 2
+    params = {
+        "variables": '{"rawQuery":"from:test","count":20}',
+        "features": '{"responsive_web_graphql_timeline_navigation_enabled":true}',
+        "auth_token": "secret",
+        "plain": "value",
+    }
+
+    context = _format_unknown_error_context(
+        ctx,
+        "SearchTimeline",
+        "GET",
+        "https://x.com/i/api/graphql/op/SearchTimeline?debug=true",
+        params,
+        unknown_retry=3,
+        connection_retry=1,
+    )
+
+    assert context["queue"] == "SearchTimeline"
+    assert context["account"] == "user1"
+    assert context["account_req_count"] == 2
+    assert context["method"] == "GET"
+    assert context["url"] == "https://x.com/i/api/graphql/op/SearchTimeline"
+    assert context["query_keys"] == ["debug"]
+    assert context["params"]["auth_token"] == "<redacted>"
+    assert context["params"]["plain"] == "value"
+    assert context["params"]["variables"]["_json_keys"] == ["count", "rawQuery"]
+    assert context["params"]["features"]["_json_keys"] == [
+        "responsive_web_graphql_timeline_navigation_enabled"
+    ]
+
+    await client.__aexit__(None, None, None)
