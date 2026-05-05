@@ -1,5 +1,3 @@
-
-import pytest
 from twscrape.xclid import get_scripts_list
 
 
@@ -38,3 +36,17 @@ def test_get_scripts_list_runtime_manifest():
     assert len(scripts) == 2
     assert "https://abs.twimg.com/responsive-web/client-web/ondemand.s.fe855d2a.js" in scripts
     assert "https://abs.twimg.com/responsive-web/client-web/bundle.UserProfile.175e11aa.js" in scripts
+
+
+def test_get_scripts_list_runtime_manifest_with_fallback_chunk_name():
+    runtime_text = (
+        'stuff... _.u=e=>""+(({59924:"ondemand.s",61234:"i18n/emoji-ja"})[e]||e)+"."+'
+        '{59924:"9805bc8",61234:"f6c36a4",999:"abcd123"}[e]+"a.js" ... stuff'
+    )
+
+    scripts = list(get_scripts_list(runtime_text))
+
+    assert len(scripts) == 3
+    assert "https://abs.twimg.com/responsive-web/client-web/ondemand.s.9805bc8a.js" in scripts
+    assert "https://abs.twimg.com/responsive-web/client-web/i18n/emoji-ja.f6c36a4a.js" in scripts
+    assert "https://abs.twimg.com/responsive-web/client-web/999.abcd123a.js" in scripts

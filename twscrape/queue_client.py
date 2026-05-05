@@ -32,18 +32,19 @@ class XClIdGenStore:
             return cls.items[username]
 
         tries = 0
+        last_exc = None
         while tries < 3:
             try:
                 clid_gen = await XClIdGen.create()
                 cls.items[username] = clid_gen
                 return clid_gen
-            except httpx.HTTPStatusError:
+            except Exception as e:
+                last_exc = e
                 tries += 1
                 await asyncio.sleep(1)
 
-        raise AbortReqError(
-            "Faield to create XClIdGen. See: https://github.com/vladkens/twscrape/issues/248"
-        )
+        msg = "Failed to create XClIdGen. See: https://github.com/vladkens/twscrape/issues/248"
+        raise AbortReqError(msg) from last_exc
 
 
 class Ctx:

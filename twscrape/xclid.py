@@ -91,7 +91,8 @@ def _extract_balanced_objects(text: str, start_idx: int) -> list[str]:
 
 
 def _parse_runtime_manifest(text: str):
-    start = text.find("g.u=e=>(")
+    match = re.search(r"[\w$]+\.u=e=>", text)
+    start = match.start() if match else -1
     end = text.find('[e]+"a.js"', start)
     if start == -1 or end == -1:
         return
@@ -116,7 +117,7 @@ def get_scripts_list(text: str):
     # maps. Fall back to preloaded scripts only when neither manifest exists.
     for url in _parse_runtime_manifest(text):
         yield url
-    if 'g.u=e=>(' in text:
+    if re.search(r"[\w$]+\.u=e=>", text):
         return
 
     legacy_marker = 'e=>e+"."+'
